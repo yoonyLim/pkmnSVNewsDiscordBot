@@ -9,7 +9,12 @@ import getNews
 
 load_dotenv(verbose = True)
 
-async def sendEmbeds(newsArray, ctx):
+TOKEN = os.getenv("TOKEN")
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix = "/", intents = intents)
+
+async def sendEmbeds(newsArray, ctx = None):
     if not ctx:
         embeds = []
 
@@ -20,8 +25,9 @@ async def sendEmbeds(newsArray, ctx):
             embeds.append(embed)
 
         channel = bot.get_channel(1160171194344034374)
-        await channel.send(embeds = embeds)
-        embeds = []
+
+        if channel:
+            await channel.send(embeds = embeds)
     else:
         embeds = []
 
@@ -33,12 +39,9 @@ async def sendEmbeds(newsArray, ctx):
             embeds.append(embed)
 
         await ctx.response.send_message(embeds = embeds)
-        embeds = []
 
 # the function that runs the bot
 def run_discord_bot():
-    TOKEN = os.getenv("TOKEN")
-
     # iterating twice a day to get recent news
     @tasks.loop(hours = 24)
     async def scrape():
@@ -46,7 +49,7 @@ def run_discord_bot():
 
         # if the newsArray is not empty // there is/are new news
         if newsArray:
-            sendEmbeds(newsArray)
+            await sendEmbeds(newsArray)
 
     @scrape.before_loop
     async def scrape_before():
@@ -74,7 +77,7 @@ def run_discord_bot():
         newsArray = getNews.getTodayNews()
 
         if newsArray:
-            sendEmbeds(newsArray)
+            await sendEmbeds(newsArray)
 
     # /help를 친 사람에게만 보이도록 ephemeral = True
     @bot.tree.command(name = "help")
@@ -84,6 +87,6 @@ def run_discord_bot():
     @bot.tree.command(name = "prevnews")
     async def prevNews(ctx: discord.Interaction):
         newsArray = getNews.getPrevNews()
-        sendEmbeds(newsArray, ctx)
+        await sendEmbeds(newsArray, ctx)
 
     bot.run(TOKEN)
