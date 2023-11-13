@@ -9,44 +9,53 @@ load_dotenv(verbose = True)
 
 # use selenium chrome webdriver without opening the browser
 op = webdriver.ChromeOptions()
-op.add_argument('headless')
-
-# get raid events
+op.add_argument('headless') # to reduce received data size
 driver = webdriver.Chrome(options = op)
-driver.get(os.getenv("ADDRESS") + "/list")
-html_txt = driver.page_source
-soup = BeautifulSoup(html_txt, 'lxml')
+driver.get(os.getenv("ADDRESS") + "/list") # fetch from the web page
 
-# find news that came out today
-anchors = soup.find_all('a')
+def fetchPage():
+    driver.refresh() # refresh to get the latest news
+    html_txt = driver.page_source
+    soup = BeautifulSoup(html_txt, 'lxml')
+
+    # find news that came out today
+    anchors = soup.find_all('a')
+
+    return anchors
 
 def getTodayNews():
-    today = date.today().strftime("%Y. %m. %d.")
+    anchors = fetchPage()
+    today = date.today().strftime("%Y.%m.%d.")
 
     isTdoayNews = False
-    index = 0
+    indexes = []
+    newsArray = []
 
     for anchor in anchors:
         tgt  = anchor.find("div", {"class": "date-text"})
 
-        if tgt.text == today:
+        if tgt.text.replace(" ", "") == today:
             isTdoayNews = True
-            index = anchors.index(anchor)
+            indexes.append(anchors.index(anchor))
 
     if isTdoayNews:
         # store news title, img, and link to send out
-        newsTitle = anchors[index].find("div", {"class": "title-content"}).text
-        newsImgUrl = os.getenv("ADDRESS") + '/' + anchors[index].find("img")["src"]
-        newsLink = os.getenv("ADDRESS") + '/' + anchors[index]["href"]
+        for index in indexes:
+            newsTitle = anchors[index].find("div", {"class": "title-content"}).text
+            newsImgUrl = os.getenv("ADDRESS") + '/' + anchors[index].find("img")["src"]
+            newsLink = os.getenv("ADDRESS") + '/' + anchors[index]["href"]
+
+            newsArray.append([newsTitle, newsImgUrl, newsLink])
 
         isTdoayNews = False
 
-        return [newsTitle, newsImgUrl, newsLink]
+        return newsArray
     else: 
         return 0
 
 def getPrevNews():
-    allNews = []
+    anchors = fetchPage()
+    newsArray = []
 
     for anchor in anchors:
         newsTitle = anchor.find("div", {"class": "title-content"}).text
@@ -54,6 +63,6 @@ def getPrevNews():
         newsLink = os.getenv("ADDRESS") + '/' + anchor["href"]
         newsDate = anchor.find("div", {"class": "date-text"}).text
 
-        allNews.append([newsTitle, newsImgUrl, newsLink, newsDate])
+        newsArray.append([newsTitle, newsImgUrl, newsLink, newsDate])
 
-    return allNews
+    return newsArray
